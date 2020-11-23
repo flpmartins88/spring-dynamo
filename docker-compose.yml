@@ -1,0 +1,35 @@
+version: '3.0'
+
+services:
+  localstack:
+    image: localstack/localstack-full
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+#      - "${PORT_WEB_UI-8080}:${PORT_WEB_UI-8080}"
+      - "9080:9080"
+    environment:
+      - SERVICES=dynamodb
+      - PORT_WEB_UI=9080
+
+  setup-localstack:
+    image: amazon/aws-cli
+    environment:
+      - AWS_ACCESS_KEY_ID=secret-key-id
+      - AWS_SECRET_ACCESS_KEY=secret-access-key
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: /bin/sh -c
+    command: >
+      "
+        aws --endpoint-url http://localstack:4566 dynamodb create-table \
+            --table-name person \
+            --key-schema AttributeName=id,KeyType=HASH \
+            --attribute-definitions AttributeName=id,AttributeType=S \
+            --provisioned-throughput ReadCapacityUnits=10,WriteCapacityUnits=10
+
+        aws --endpoint-url http://localstack:4566 dynamodb update-time-to-live \
+            --table-name person \
+            --time-to-live-specification Enabled=true,AttributeName=ttl
+      "
+    depends_on:
+      - localstack
